@@ -1,10 +1,10 @@
-# [Project Name]
+# Gas
 
 ## Setup
 
 ```
-git clone [HTTPS/SSH URL]
-cd [project-name]
+git clone https://github.com/lyc0603/gas.git
+cd gas
 ```
 
 ### Give execute permission to your script and then run `setup_repo.sh`
