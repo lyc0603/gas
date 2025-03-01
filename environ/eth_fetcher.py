@@ -183,9 +183,10 @@ if __name__ == "__main__":
         ).events.Swap,
         {"address": ETHEREUM_USDC_ETH_500_V3_POOL},
         15000000,
-        15100000,
+        15005000,
     )
     current_time = datetime.datetime.now() - current_time
+    print(res)
     print(f"Time taken: {current_time}, events: {len(res)}")
 
     # # Linear fetch
