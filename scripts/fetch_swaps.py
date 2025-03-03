@@ -2,6 +2,7 @@
 Script to fetch swaps
 """
 
+import time
 import argparse
 import glob
 import json
@@ -88,6 +89,7 @@ def fetch_swap_events(
     """Fetch swap events using a specific API key and block range"""
 
     http = queue.get()
+    time.sleep(1)
 
     try:
         w3 = Web3(HTTPProvider(http))
@@ -113,6 +115,7 @@ def fetch_swap_events(
         ) as f:
             for event in events:
                 f.write(json.dumps(event) + "\n")
+
     except Web3RPCError as e:
         error_msg = json.loads(e.args[0].replace("'", '"'))
         if error_msg["code"] == -32005:
@@ -190,7 +193,7 @@ def main() -> None:
             extract_pool(args.chain),
         )
 
-        with multiprocessing.Pool(processes=len(INFURA_API_KEYS)) as pool:
+        with multiprocessing.Pool(processes=8) as pool:
             pool.starmap(
                 fetch_swap_events,
                 [
