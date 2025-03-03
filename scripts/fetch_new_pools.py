@@ -8,7 +8,6 @@ import multiprocessing
 import os
 
 from web3 import Web3
-from web3.exceptions import BlockNotFound
 from web3.providers import HTTPProvider
 
 from environ.constants import (
@@ -17,11 +16,7 @@ from environ.constants import (
     DATA_PATH,
     POLYGON_V3_FACTORY,
 )
-from environ.utils import (
-    API_BASE,
-    _fetch_events_for_all_contracts,
-    to_dict,
-)
+from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
 
 
 def fetch_new_pools(
@@ -61,8 +56,8 @@ def fetch_new_pools(
         ) as f:
             for event in events:
                 f.write(json.dumps(event) + "\n")
-    except BlockNotFound:
-        print(f"Block not found for block range {from_block} - {to_block}")
+    except Exception as e:
+        print(f"Block not found for block range {from_block} - {to_block}, {e}")
 
     queue.put(http)
 
