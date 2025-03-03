@@ -187,7 +187,7 @@ def main() -> None:
             extract_pool(args.chain),
         )
 
-        with multiprocessing.Pool(processes=5) as pool:
+        with multiprocessing.Pool(processes=len(INFURA_API_KEYS)) as pool:
             pool.starmap(
                 fetch_swap_events,
                 [

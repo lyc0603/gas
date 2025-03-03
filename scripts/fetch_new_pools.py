@@ -135,7 +135,7 @@ def main() -> None:
             args.step,
         )
 
-        with multiprocessing.Pool(processes=5) as pool:
+        with multiprocessing.Pool(processes=len(INFURA_API_KEYS)) as pool:
             pool.starmap(
                 fetch_new_pools,
                 [(args.chain, *block_range, api_queue) for block_range in blocks],
