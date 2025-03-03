@@ -6,6 +6,7 @@ import argparse
 import json
 import multiprocessing
 import os
+from dotenv import load_dotenv
 
 from web3 import Web3
 from web3.providers import HTTPProvider
@@ -17,6 +18,8 @@ from environ.constants import (
     POLYGON_V3_FACTORY,
 )
 from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
+
+load_dotenv()
 
 
 def fetch_new_pools(

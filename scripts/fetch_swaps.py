@@ -8,6 +8,7 @@ import json
 import multiprocessing
 import os
 from typing import List
+from dotenv import load_dotenv
 
 from tqdm import tqdm
 from web3 import HTTPProvider, Web3
@@ -20,6 +21,8 @@ from environ.constants import (
     POLYGON_V3_FACTORY_START_BLOCK,
 )
 from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
+
+load_dotenv()
 
 FACTORY_BLOCK = {
     "polygon": {
