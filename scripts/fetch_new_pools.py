@@ -2,6 +2,7 @@
 Script to fetch new pool data
 """
 
+import time
 import argparse
 import json
 import logging
@@ -41,6 +42,7 @@ def fetch_new_pools(
         "polygon": POLYGON_V3_FACTORY,
     }
 
+    time.sleep(1)
     http = queue.get()
 
     try:
