@@ -4,10 +4,11 @@ Script to fetch new pool data
 
 import argparse
 import json
+import logging
 import multiprocessing
 import os
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
@@ -20,6 +21,14 @@ from environ.constants import (
 from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
+
+os.makedirs(f"{DATA_PATH}/log", exist_ok=True)
+logging.basicConfig(
+    filename=f"{DATA_PATH}/log/error.log",
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.ERROR,
+)
 
 
 def fetch_new_pools(
@@ -60,7 +69,9 @@ def fetch_new_pools(
             for event in events:
                 f.write(json.dumps(event) + "\n")
     except Exception as e:
-        print(f"Block not found for block range {from_block} - {to_block}, {e}")
+        print(
+            f"Fetching Pools: Block not found for block range {from_block} - {to_block}, {e}"
+        )
 
     queue.put(http)
 
@@ -94,7 +105,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def split_blocks(start_block: int, end_block: int, step: int) -> list:
+def split_blocks(start_block: int, end_block: int, step: int, chain: str) -> list:
     """
     Split the blocks into step ranges
     """
@@ -105,8 +116,13 @@ def split_blocks(start_block: int, end_block: int, step: int) -> list:
     blocks = []
 
     for i in range(min_block, max_block, step):
-        blocks.append((i, i + step - 1))
+        # check if the file already exists
+        if not os.path.exists(f"{DATA_PATH}/{chain}/pool/{i}_{i + step - 1}.json"):
+            blocks.append((i, i + step - 1))
+        else:
+            continue
 
+    print(f"TODOS: {len(blocks)}")
     return blocks
 
 
@@ -131,9 +147,11 @@ def main() -> None:
             args.start,
             args.end,
             args.step,
+            args.chain,
         )
 
-        with multiprocessing.Pool(processes=len(INFURA_API_KEYS)) as pool:
+        num_processes = min(len(INFURA_API_KEYS), os.cpu_count())
+        with multiprocessing.Pool(processes=num_processes) as pool:
             pool.starmap(
                 fetch_new_pools,
                 [(args.chain, *block_range, api_queue) for block_range in blocks],

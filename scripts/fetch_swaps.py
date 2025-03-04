@@ -2,38 +2,32 @@
 Script to fetch swaps
 """
 
-import time
 import argparse
 import glob
 import json
+import logging
 import multiprocessing
 import os
-from typing import List
-from dotenv import load_dotenv
+import time
+from typing import Dict, List
 
+from dotenv import load_dotenv
 from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import (
-    ABI_PATH,
-    DATA_PATH,
-    POLYGON_V3_FACTORY_END_BLOCK,
-    POLYGON_V3_FACTORY_START_BLOCK,
-)
+from environ.constants import ABI_PATH, DATA_PATH
 from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
 
-FACTORY_BLOCK = {
-    "polygon": {
-        "start": POLYGON_V3_FACTORY_START_BLOCK,
-        "end": POLYGON_V3_FACTORY_END_BLOCK,
-    }
-}
-STEP = {
-    "polygon": 1000,
-}
+os.makedirs(f"{DATA_PATH}/log", exist_ok=True)
+logging.basicConfig(
+    filename=f"{DATA_PATH}/log/error.log",
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.ERROR,
+)
 
 
 def extract_pool(chain: str = "polygon") -> List:
@@ -55,7 +49,9 @@ def extract_pool(chain: str = "polygon") -> List:
     return pool_list
 
 
-def split_blocks(start_block: int, end_block: int, step: int, pools: List) -> list:
+def split_blocks(
+    start_block: int, end_block: int, step: int, pools: List, chain: str
+) -> List:
     """
     Split the blocks into step ranges
     """
@@ -66,6 +62,11 @@ def split_blocks(start_block: int, end_block: int, step: int, pools: List) -> li
     blocks = []
 
     for i in tqdm(range(min_block, max_block, step), desc="Splitting Blocks"):
+
+        # check wether the file exits
+        if os.path.exists(f"{DATA_PATH}/{chain}/swap/{i}_{i + step - 1}.json"):
+            continue
+
         pool_list = []
         for pool in pools:
             if pool[1] <= i + step - 1:
@@ -75,30 +76,41 @@ def split_blocks(start_block: int, end_block: int, step: int, pools: List) -> li
 
         blocks.append((i, i + step - 1, pool_list))
 
+    print(f"TODOs: {len(blocks)}")
     return blocks
+
+
+def fetch_swap_multiprocess(
+    chain: str,
+    from_block: int,
+    to_block: int,
+    pools: List,
+    queue: multiprocessing.Queue,
+    path: str,
+    abi: Dict,
+) -> None:
+    """Fetch swap events using a specific API key and block range"""
+
+    http = queue.get()
+    time.sleep(1)
+    fetch_swap_events(chain, from_block, to_block, pools, http, path, abi)
+    queue.put(http)
 
 
 def fetch_swap_events(
     chain: str,
     from_block: int,
     to_block: int,
-    pools: list,
-    queue: multiprocessing.Queue,
+    pools: List,
+    http: str,
     path: str,
+    abi: Dict,
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
 
-    http = queue.get()
-    time.sleep(1)
-
     try:
         w3 = Web3(HTTPProvider(http))
-
-        # Fetch swap events
-        swap_event = w3.eth.contract(
-            abi=json.load(open(f"{ABI_PATH}/v3pool.json", encoding="utf-8"))
-        ).events.Swap
-
+        swap_event = w3.eth.contract(abi=abi).events.Swap
         events = _fetch_events_for_all_contracts(
             w3,
             swap_event,
@@ -117,25 +129,29 @@ def fetch_swap_events(
                 f.write(json.dumps(event) + "\n")
 
     except Web3RPCError as e:
-        error_msg = json.loads(e.args[0].replace("'", '"'))
-        if error_msg["code"] == -32005:
-            mid_block = (from_block + to_block) // 2
-            fetch_swap_events(chain, from_block, mid_block, pools, http, path)
-            fetch_swap_events(chain, mid_block + 1, to_block, pools, http, path)
-    except Exception as e:
-        print(
-            f"Error fetching swap events for block range {from_block} - {to_block}, {e}"
-        )
-        with open(
-            f"{DATA_PATH}/{chain}/error/error.log",
-            "a",
-            encoding="utf-8",
-        ) as f:
-            f.write(
-                f"Error fetching {chain} swap events for block range {from_block} - {to_block}.\n"
+        try:
+            error_msg = json.loads(e.args[0].replace("'", '"'))
+            if error_msg["code"] == -32005:
+                mid_block = (from_block + to_block) // 2
+                fetch_swap_events(chain, from_block, mid_block, pools, http, path, abi)
+                fetch_swap_events(
+                    chain, mid_block + 1, to_block, pools, http, path, abi
+                )
+        except json.JSONDecodeError as _:
+            logging.error("Fetching Swaps: Failed to parse Web3RPCError: %s", e)
+        except Exception as inner_exception:
+            logging.error(
+                "Fetching Swaps: Unexpected error during Web3RPCError handling: %s",
+                inner_exception,
             )
-    finally:
-        queue.put(http)
+    except Exception as e:
+        logging.error(
+            "Fetching Swaps: Error fetching %s swap events for block range %d - %d: %s",
+            chain,
+            from_block,
+            to_block,
+            e,
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -173,10 +189,7 @@ def main() -> None:
     """
 
     args = parse_args()
-    if not os.path.exists(f"{DATA_PATH}/{args.chain}/swap"):
-        os.makedirs(f"{DATA_PATH}/{args.chain}/swap")
-    if not os.path.exists(f"{DATA_PATH}/{args.chain}/error"):
-        os.makedirs(f"{DATA_PATH}/{args.chain}/error")
+    os.makedirs(f"{DATA_PATH}/{args.chain}/swap", exist_ok=True)
 
     INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 
@@ -191,17 +204,21 @@ def main() -> None:
             args.end,
             args.step,
             extract_pool(args.chain),
+            args.chain,
         )
 
-        with multiprocessing.Pool(processes=len(INFURA_API_KEYS)) as pool:
+        abi = json.load(open(f"{ABI_PATH}/v3pool.json", encoding="utf-8"))
+        num_processes = min(len(INFURA_API_KEYS), os.cpu_count())
+        with multiprocessing.Pool(processes=num_processes) as pool:
             pool.starmap(
-                fetch_swap_events,
+                fetch_swap_multiprocess,
                 [
                     (
                         args.chain,
                         *block_range,
                         api_queue,
-                        f"{DATA_PATH}/{args.chain}/swap/{block_range[0]}_{block_range[1]}.json",
+                        f"{DATA_PATH}/{args.chain}/swap/{block_range[0]}_{block_range[1]}.jsonl",
+                        abi,
                     )
                     for block_range in blocks
                 ],

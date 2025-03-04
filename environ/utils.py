@@ -108,3 +108,31 @@ def _fetch_events_for_all_contracts(
         all_events.append(evt)
 
     return all_events
+
+
+if __name__ == "__main__":
+
+    import os
+
+    INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
+    w3 = Web3(HTTPProvider(API_BASE["polygon"] + INFURA_API_KEYS[0]))
+    # _ = w3.eth.get_transaction(
+    #     "0x240dba2ec1d38c066a2c92c16b5ad9d957bc76a020aba95f3612e822e771c028"
+    #     # "0x555b892defec0973f3820934ba0b5d722e5d51f514d8c7faf7c7f3fcd0126b57",
+    # )
+
+    with w3.batch_requests() as batch:
+        batch.add(
+            w3.eth.get_transaction(
+                "0x240dba2ec1d38c066a2c92c16b5ad9d957bc76a020aba95f3612e822e771c028"
+            )
+        )
+        batch.add(
+            w3.eth.get_transaction(
+                "0x555b892defec0973f3820934ba0b5d722e5d51f514d8c7faf7c7f3fcd0126b57"
+            )
+        )
+
+        responses = batch.execute()
+
+    print(responses)
