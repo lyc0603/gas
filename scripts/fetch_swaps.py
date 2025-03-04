@@ -138,11 +138,20 @@ def fetch_swap_events(
                     chain, mid_block + 1, to_block, pools, http, path, abi
                 )
         except json.JSONDecodeError as _:
-            logging.error("Fetching Swaps: Failed to parse Web3RPCError: %s", e)
-        except Exception as inner_exception:
             logging.error(
-                "Fetching Swaps: Unexpected error during Web3RPCError handling: %s",
-                inner_exception,
+                "Fetching Swaps: Error fetching %s swap events for block range %d - %d: %s",
+                chain,
+                from_block,
+                to_block,
+                e,
+            )
+        except Exception as _:
+            logging.error(
+                "Fetching Swaps: Error fetching %s swap events for block range %d - %d: %s",
+                chain,
+                from_block,
+                to_block,
+                e,
             )
     except Exception as e:
         logging.error(
