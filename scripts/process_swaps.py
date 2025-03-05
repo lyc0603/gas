@@ -33,29 +33,12 @@ chain = "polygon"
 files = glob(f"{DATA_PATH}/{chain}/swap/*.jsonl")
 
 txn_set = set()
-iter_count = 0
-batch_num = 0
-txn_num = 0
 
 for file in files:
     with open(file, "r", encoding="utf-8") as f:
         for line in f:
             event = json.loads(line)
-            iter_count += 1
             txn_set.add(event["transactionHash"])
-
-            if iter_count % 10000 == 0:
-                iter_count = 0
-                batch_num += 1
-                with open(
-                    f"{DATA_PATH}/{chain}/txn_hash/{batch_num}.jsonl",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
-                    for txn in txn_set:
-                        f.write(json.dumps({"transactionHash": txn}) + "\n")
-                txn_num += len(txn_set)
-                txn_set.clear()
 
 # if txn_set:
 #     batch_num += 1
@@ -67,7 +50,7 @@ for file in files:
 #         for txn in txn_set:
 #             f.write(json.dumps({"transactionHash": txn}) + "\n")
 
-print(f"Total number of transactions: {txn_num}")
+print(f"Total number of transactions: {len(txn_set)}")
 
 # INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 # w3 = Web3(HTTPProvider(API_BASE["polygon"] + INFURA_API_KEYS[0]))
