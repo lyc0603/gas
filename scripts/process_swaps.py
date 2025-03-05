@@ -8,6 +8,7 @@ from glob import glob
 import os
 import time
 import datetime
+from tqdm import tqdm
 
 from web3 import Web3
 from web3.providers import HTTPProvider
@@ -26,7 +27,7 @@ API_BASE = {
 }
 
 
-# os.makedirs(f"{DATA_PATH}/polygon/txn_hash", exist_ok=True)
+os.makedirs(f"{DATA_PATH}/polygon/txn_hash", exist_ok=True)
 
 # load the files list from the directory
 chain = "polygon"
@@ -34,21 +35,21 @@ files = glob(f"{DATA_PATH}/{chain}/swap/*.jsonl")
 
 txn_set = set()
 
-for file in files:
+for file in tqdm(files):
     with open(file, "r", encoding="utf-8") as f:
         for line in f:
             event = json.loads(line)
             txn_set.add(event["transactionHash"])
 
-# if txn_set:
-#     batch_num += 1
-#     with open(
-#         f"{DATA_PATH}/{chain}/txn_hash/{batch_num}.jsonl",
-#         "w",
-#         encoding="utf-8",
-#     ) as f:
-#         for txn in txn_set:
-#             f.write(json.dumps({"transactionHash": txn}) + "\n")
+# # if txn_set:
+# #     batch_num += 1
+# #     with open(
+# #         f"{DATA_PATH}/{chain}/txn_hash/{batch_num}.jsonl",
+# #         "w",
+# #         encoding="utf-8",
+# #     ) as f:
+# #         for txn in txn_set:
+# #             f.write(json.dumps({"transactionHash": txn}) + "\n")
 
 print(f"Total number of transactions: {len(txn_set)}")
 
@@ -69,7 +70,7 @@ print(f"Total number of transactions: {len(txn_set)}")
 #     for line in f:
 #         hash_list.append(json.loads(line)["transactionHash"])
 #         counter += 1
-#         if counter == 1:
+#         if counter == 1000:
 #             with w3.batch_requests() as batch:
 #                 for txn in hash_list:
 #                     batch.add(w3.eth.get_transaction(txn))
@@ -77,4 +78,4 @@ print(f"Total number of transactions: {len(txn_set)}")
 #             hash_list.clear()
 #             counter = 0
 #             print(responses)
-#             time.sleep(0.5)
+#             time.sleep(100)
