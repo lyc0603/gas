@@ -2,12 +2,12 @@
 Script to fetch new pool data
 """
 
-import time
 import argparse
 import json
 import logging
 import multiprocessing
 import os
+import time
 
 from dotenv import load_dotenv
 from web3 import Web3
