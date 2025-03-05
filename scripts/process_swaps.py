@@ -4,78 +4,84 @@ Script to process the swaps data
 
 import argparse
 import json
-from glob import glob
+import multiprocessing
 import os
-import time
-import datetime
-from tqdm import tqdm
+from glob import glob
+from typing import List
 
-from web3 import Web3
-from web3.providers import HTTPProvider
-
-from environ.constants import (
-    ARBITRUM_INFURA_API_BASE,
-    DATA_PATH,
-    ETHEREUM_INFURA_API_BASE,
-    POLYGON_INFURA_API_BASE,
-)
-
-API_BASE = {
-    "ethereum": ETHEREUM_INFURA_API_BASE,
-    "arbitrum": ARBITRUM_INFURA_API_BASE,
-    "polygon": POLYGON_INFURA_API_BASE,
-}
+from environ.constants import DATA_PATH
 
 
-os.makedirs(f"{DATA_PATH}/polygon/txn_hash", exist_ok=True)
+def process_txn(files: List, chain: str) -> None:
+    """Method to process the transaction hash from the swap files"""
 
-# load the files list from the directory
-chain = "polygon"
-files = glob(f"{DATA_PATH}/{chain}/swap/*.jsonl")
+    txn_set = set()
+    batch_num = 0
 
-txn_set = set()
+    for file in files:
+        from_block = int(file.split("/")[-1].split(".")[0].split("_")[0])
+        with open(file, "r", encoding="utf-8") as f:
+            for line in f:
+                event = json.loads(line)
+                txn_set.add(event["transactionHash"])
 
-for file in tqdm(files):
-    with open(file, "r", encoding="utf-8") as f:
-        for line in f:
-            event = json.loads(line)
-            txn_set.add(event["transactionHash"])
+                if len(txn_set) == 1000:
+                    batch_num += 1
+                    with open(
+                        f"{DATA_PATH}/{chain}/txn_hash/{from_block}_{batch_num}.jsonl",
+                        "w",
+                        encoding="utf-8",
+                    ) as f:
+                        for txn in txn_set:
+                            f.write(json.dumps({"transactionHash": txn}) + "\n")
+                    txn_set.clear()
 
-# # if txn_set:
-# #     batch_num += 1
-# #     with open(
-# #         f"{DATA_PATH}/{chain}/txn_hash/{batch_num}.jsonl",
-# #         "w",
-# #         encoding="utf-8",
-# #     ) as f:
-# #         for txn in txn_set:
-# #             f.write(json.dumps({"transactionHash": txn}) + "\n")
+    if txn_set:
+        batch_num += 1
+        with open(
+            f"{DATA_PATH}/{chain}/txn_hash/{from_block}_{batch_num}.jsonl",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            for txn in txn_set:
+                f.write(json.dumps({"transactionHash": txn}) + "\n")
 
-print(f"Total number of transactions: {len(txn_set)}")
 
-# INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
-# w3 = Web3(HTTPProvider(API_BASE["polygon"] + INFURA_API_KEYS[0]))
+def parse_args():
+    """Method to parse the arguments"""
+    parser = argparse.ArgumentParser(description="Process the swap data")
+    parser.add_argument(
+        "--chain",
+        default="polygon",
+        help="The chain to fetch data from (e.g., polygon).",
+    )
 
-# # before_time = datetime.datetime.now()
-# # _ = w3.eth.get_transaction(
-# #     "0x591bfe05e2a0cd7e131fafc60c698c772715c1c8a1074d047af20673a2c7625f"
-# # )
-# # print(_)
-# # after_time = datetime.datetime.now()
-# # print(after_time - before_time)
+    return parser.parse_args()
 
-# with open(f"{DATA_PATH}/polygon/txn_hash/1.jsonl", "r", encoding="utf-8") as f:
-#     hash_list = []
-#     counter = 0
-#     for line in f:
-#         hash_list.append(json.loads(line)["transactionHash"])
-#         counter += 1
-#         if counter == 1000:
-#             with w3.batch_requests() as batch:
-#                 for txn in hash_list:
-#                     batch.add(w3.eth.get_transaction(txn))
-#                 responses = batch.execute()
-#             hash_list.clear()
-#             counter = 0
-#             print(responses)
-#             time.sleep(100)
+
+def main() -> None:
+    """Main entrypoint"""
+
+    args = parse_args()
+    os.makedirs(f"{DATA_PATH}/{args.chain}/txn_hash", exist_ok=True)
+
+    files = glob(f"{DATA_PATH}/{args.chain}/swap/*.jsonl")
+    num_workers = int(os.cpu_count()) - 4
+
+    # divide the files into chunks with number equals number of workers
+    chunk_size = len(files) // num_workers
+    remainder = len(files) % num_workers
+
+    chunks = []
+    start = 0
+    for i in range(num_workers):
+        end = start + chunk_size + (1 if i < remainder else 0)  # Distribute remainder
+        chunks.append(files[start:end])
+        start = end
+
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        pool.starmap(process_txn, [(chunk, args.chain) for chunk in chunks])
+
+
+if __name__ == "__main__":
+    main()
