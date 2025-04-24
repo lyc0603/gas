@@ -29,7 +29,7 @@ logging.basicConfig(
 )
 
 
-def extract_pool(chain: str = "polygon") -> list:
+def extract_pool(chain: str = "polygon") -> list[tuple[str, int]]:
     """Fetch the set of pools from the file"""
 
     # get the list of all files in the folder
@@ -50,7 +50,7 @@ def extract_pool(chain: str = "polygon") -> list:
 
 def split_blocks(
     start_block: int, end_block: int, step: int, pools: list, chain: str
-) -> list:
+) -> list[tuple[int, int]]:
     """
     Split the blocks into step ranges
     """

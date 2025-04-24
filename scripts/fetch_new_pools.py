@@ -8,6 +8,7 @@ import logging
 import multiprocessing
 import os
 import time
+from typing import Any
 
 from dotenv import load_dotenv
 from web3 import Web3
@@ -97,7 +98,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def split_blocks(start_block: int, end_block: int, step: int, chain: str) -> list:
+def split_blocks(
+    start_block: int, end_block: int, step: int, chain: str
+) -> list[dict[str, Any]]:
     """
     Split the blocks into step ranges
     """

@@ -20,7 +20,7 @@ from environ.constants import API_BASE, DATA_PATH
 logger = logging.getLogger(__name__)
 
 
-def extract_pool_set() -> Iterable:
+def extract_pool_set() -> set[str]:
     """Fetch the set of pools from the file"""
 
     # get the list of all files in the folder
@@ -62,7 +62,7 @@ def _fetch_events_for_all_contracts(
     argument_filters: dict[str, Any],
     from_block: int,
     to_block: int,
-) -> Iterable:
+) -> Iterable[dict[str, Any]]:
     """Method to get events
 
     Args:
