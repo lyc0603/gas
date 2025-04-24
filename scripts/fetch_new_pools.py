@@ -14,7 +14,13 @@ from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
-from environ.constants import ABI_PATH, API_BASE, DATA_PATH, FACTORY, INFURA_API_KEYS
+from environ.constants import (
+    API_BASE,
+    DATA_PATH,
+    FACTORY,
+    INFURA_API_KEYS,
+    UNISWAP_V3_FACTORY_ABI,
+)
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
@@ -41,7 +47,7 @@ def fetch_new_pools(
 
         # Fetch pool creation events
         pool_created_event = w3.eth.contract(
-            abi=json.load(open(ABI_PATH / "v3factory.json", encoding="utf-8"))
+            abi=UNISWAP_V3_FACTORY_ABI
         ).events.PoolCreated
 
         events = _fetch_events_for_all_contracts(

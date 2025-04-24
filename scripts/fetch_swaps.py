@@ -15,7 +15,7 @@ from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import ABI_PATH, API_BASE, DATA_PATH, INFURA_API_KEYS
+from environ.constants import UNISWAP_V3_POOL_ABI, API_BASE, DATA_PATH, INFURA_API_KEYS
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
@@ -213,7 +213,7 @@ def main() -> None:
             args.chain,
         )
 
-        abi = json.load(open(f"{ABI_PATH}/v3pool.json", encoding="utf-8"))
+        abi = UNISWAP_V3_POOL_ABI
         num_processes = min(len(INFURA_API_KEYS), os.cpu_count())
         with multiprocessing.Pool(processes=num_processes) as pool:
             pool.starmap(
