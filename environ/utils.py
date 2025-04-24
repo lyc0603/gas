@@ -20,7 +20,7 @@ from environ.constants import API_BASE, DATA_PATH
 logger = logging.getLogger(__name__)
 
 
-def extract_pool_set() -> set:
+def extract_pool_set() -> Iterable:
     """Fetch the set of pools from the file"""
 
     # get the list of all files in the folder
@@ -37,7 +37,7 @@ def extract_pool_set() -> set:
     return pool_set
 
 
-def to_dict(obj):
+def to_dict(obj) -> Any:
     """Convert an AttributeDict to a regular dictionary"""
     if isinstance(obj, AttributeDict):
         return {k: to_dict(v) for k, v in obj.items()}
