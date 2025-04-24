@@ -68,7 +68,7 @@ def _fetch_events_for_all_contracts(
     Args:
         w3 (Web3): The Web3 instance
         event (Any): The event to fetch
-        argument_filters (Dict[str, Any]): The filters to apply to the event
+        argument_filters (dict[str, Any]): The filters to apply to the event
         from_block (int): The block number to start fetching events from, inclusive
         to_block (int): The block number to stop fetching events from, inclusive
     """
