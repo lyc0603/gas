@@ -61,22 +61,34 @@ pip install -e ".[dev]"
 
 ## Set up the environmental variables
 
-put your APIs in `.env`:
+sign up as many Infura APIs as possible in https://www.infura.io/
+put your Infura APIs in `.env`:
 
 ```
-COINGLASS_SECRET="abc123"
-KAIKO_API_KEY="abc123"
-TALLY_API_KEY="xxx"
-SNAPSHOT_API_KEY="aaa"
-OPENAI_API_KEY="sk-xxx"
+INFURA_API_KEYS = "API_1,API_2, ..., API_N"
 ```
 
+## Run the script
+
+### Fetch all liquidity pools of Uniswap V3, and then save them to data.
+
+Arguments:
+- `--chain`: the chain you want to fetch pools from. (e.g. `ethereum`, `polygon`, `optimism`, `arbitrum`)
+- `--start`: the block number when the factory contract is created on that chain. (e.g. `22757547`)
+- `--end`: the block number you want to end at. (e.g. `68400000`)
+- `--step`: the step size of each iteration. (e.g. `500000`)
+
 ```
-export $(cat .env | xargs)
+python scripts/fetch_new_pools.py --chain polygon --start 22757547 --end 68400000 --step 500000
 ```
 
-# fetch snapshot spaces data
+### Fetch all swap transactions of Uniswap V3, and then save them to data.
+Arguments:
+- `--chain`: the chain you want to fetch pools from. (e.g. `ethereum`, `polygon`, `optimism`, `arbitrum`)
+- `--start`: the block number when the factory contract is created on that chain. (e.g. `22757547`)
+- `--end`: the block number you want to end at. (e.g. `68400000`)
+- `--step`: the step size of each iteration. (e.g. `1000`)
 
 ```
-python scripts/fetch_spaces.py
+python scripts/fetch_swaps.py --chain polygon --start 22757547 --end 68400000 --step 1000
 ```
