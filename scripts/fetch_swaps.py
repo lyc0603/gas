@@ -15,7 +15,7 @@ from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import ABI_PATH, DATA_PATH, API_BASE
+from environ.constants import ABI_PATH, API_BASE, DATA_PATH
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
