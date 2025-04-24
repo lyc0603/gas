@@ -68,6 +68,29 @@ put your Infura APIs in `.env`:
 INFURA_API_KEYS = "API_1,API_2, ..., API_N"
 ```
 
+## Set up the global constants
+put your global constants in `constants.py`:
+
+### Infura API base URL
+```python
+API_BASE = {
+    "ethereum": "https://mainnet.infura.io/v3/",
+    "arbitrum": "https://arbitrum-mainnet.infura.io/v3/",
+    "polygon": "https://polygon-mainnet.infura.io/v3/",
+    ...
+}
+```
+
+### Uniswap V3 Factory contract address
+```python
+FACTORY = {
+    "ethereum": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    "arbitrum": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    "polygon": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    ...
+}
+```
+
 ## Run the script
 
 ### Fetch all liquidity pools of Uniswap V3, and then save them to data.

@@ -9,15 +9,14 @@ import logging
 import multiprocessing
 import os
 import time
-from typing import Dict, List
 
 from dotenv import load_dotenv
 from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import ABI_PATH, DATA_PATH
-from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
+from environ.constants import ABI_PATH, DATA_PATH, API_BASE
+from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
 
@@ -30,7 +29,7 @@ logging.basicConfig(
 )
 
 
-def extract_pool(chain: str = "polygon") -> List:
+def extract_pool(chain: str = "polygon") -> list:
     """Fetch the set of pools from the file"""
 
     # get the list of all files in the folder
@@ -50,8 +49,8 @@ def extract_pool(chain: str = "polygon") -> List:
 
 
 def split_blocks(
-    start_block: int, end_block: int, step: int, pools: List, chain: str
-) -> List:
+    start_block: int, end_block: int, step: int, pools: list, chain: str
+) -> list:
     """
     Split the blocks into step ranges
     """
@@ -84,10 +83,10 @@ def fetch_swap_multiprocess(
     chain: str,
     from_block: int,
     to_block: int,
-    pools: List,
+    pools: list,
     queue: multiprocessing.Queue,
     path: str,
-    abi: Dict,
+    abi: dict,
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
 
@@ -101,10 +100,10 @@ def fetch_swap_events(
     chain: str,
     from_block: int,
     to_block: int,
-    pools: List,
+    pools: list,
     http: str,
     path: str,
-    abi: Dict,
+    abi: dict,
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
 

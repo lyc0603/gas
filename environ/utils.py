@@ -5,7 +5,7 @@ Class to filter the event from Ethereum
 import glob
 import json
 import logging
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 from eth_abi.codec import ABICodec
 from hexbytes import HexBytes
@@ -15,20 +15,9 @@ from web3._utils.filters import construct_event_filter_params
 from web3.datastructures import AttributeDict
 from web3.providers import HTTPProvider
 
-from environ.constants import (
-    ARBITRUM_INFURA_API_BASE,
-    DATA_PATH,
-    ETHEREUM_INFURA_API_BASE,
-    POLYGON_INFURA_API_BASE,
-)
+from environ.constants import API_BASE, DATA_PATH
 
 logger = logging.getLogger(__name__)
-
-API_BASE = {
-    "ethereum": ETHEREUM_INFURA_API_BASE,
-    "arbitrum": ARBITRUM_INFURA_API_BASE,
-    "polygon": POLYGON_INFURA_API_BASE,
-}
 
 
 def extract_pool_set() -> set:
@@ -70,7 +59,7 @@ def fetch_current_block(http: str) -> int:
 def _fetch_events_for_all_contracts(
     w3: Web3,
     event: Any,
-    argument_filters: Dict[str, Any],
+    argument_filters: dict[str, Any],
     from_block: int,
     to_block: int,
 ) -> Iterable:

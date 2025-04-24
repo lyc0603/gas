@@ -13,13 +13,8 @@ from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
-from environ.constants import (
-    ABI_PATH,
-    ARBITRUM_V3_FACTORY,
-    DATA_PATH,
-    POLYGON_V3_FACTORY,
-)
-from environ.utils import API_BASE, _fetch_events_for_all_contracts, to_dict
+from environ.constants import ABI_PATH, API_BASE, DATA_PATH, FACTORY
+from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
 
@@ -37,11 +32,6 @@ def fetch_new_pools(
 ) -> None:
     """Fetch new pools using a specific API key and block range"""
 
-    factory_dict = {
-        "arbitrum": ARBITRUM_V3_FACTORY,
-        "polygon": POLYGON_V3_FACTORY,
-    }
-
     time.sleep(1)
     http = queue.get()
 
@@ -56,7 +46,7 @@ def fetch_new_pools(
         events = _fetch_events_for_all_contracts(
             w3,
             pool_created_event,
-            {"address": factory_dict[chain]},
+            {"address": FACTORY[chain]},
             from_block,
             to_block,
         )
