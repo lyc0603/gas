@@ -15,7 +15,7 @@ from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import ABI_PATH, API_BASE, DATA_PATH
+from environ.constants import ABI_PATH, API_BASE, DATA_PATH, INFURA_API_KEYS
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
@@ -198,8 +198,6 @@ def main() -> None:
 
     args = parse_args()
     os.makedirs(DATA_PATH / args.chain / "swap", exist_ok=True)
-
-    INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 
     with multiprocessing.Manager() as manager:
         api_queue = manager.Queue()

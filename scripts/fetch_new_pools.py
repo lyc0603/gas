@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
-from environ.constants import ABI_PATH, API_BASE, DATA_PATH, FACTORY
+from environ.constants import ABI_PATH, API_BASE, DATA_PATH, FACTORY, INFURA_API_KEYS
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
@@ -128,8 +128,6 @@ def main() -> None:
 
     args = parse_args()
     os.makedirs(DATA_PATH / args.chain / "pool", exist_ok=True)
-
-    INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 
     with multiprocessing.Manager() as manager:
         api_queue = manager.Queue()

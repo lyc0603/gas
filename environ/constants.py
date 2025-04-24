@@ -5,6 +5,8 @@ from environ.settings import PROJECT_ROOT
 DATA_PATH = PROJECT_ROOT / "data"
 ABI_PATH = DATA_PATH / "abi"
 
+INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
+
 # Infura API base URL
 API_BASE = {
     "ethereum": "https://mainnet.infura.io/v3/",

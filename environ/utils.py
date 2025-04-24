@@ -82,9 +82,8 @@ def _fetch_events_for_all_contracts(
 
 if __name__ == "__main__":
 
-    import os
+    from environ.constants import INFURA_API_KEYS
 
-    INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
     w3 = Web3(HTTPProvider(API_BASE["polygon"] + INFURA_API_KEYS[0]))
     # _ = w3.eth.get_transaction(
     #     "0x240dba2ec1d38c066a2c92c16b5ad9d957bc76a020aba95f3612e822e771c028"
