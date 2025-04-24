@@ -20,9 +20,9 @@ from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
 
-os.makedirs(f"{DATA_PATH}/log", exist_ok=True)
+os.makedirs(DATA_PATH / "log", exist_ok=True)
 logging.basicConfig(
-    filename=f"{DATA_PATH}/log/error.log",
+    filename=DATA_PATH / "log" / "error.log",
     filemode="a",
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.ERROR,
@@ -33,8 +33,8 @@ def extract_pool(chain: str = "polygon") -> list[tuple[str, int]]:
     """Fetch the set of pools from the file"""
 
     # get the list of all files in the folder
-    glob_path = f"{DATA_PATH}/{chain}/pool/*.json"
-    files = glob.glob(glob_path)
+    glob_path = DATA_PATH / chain / "pool" / "*.json"
+    files = glob.glob(str(glob_path))
 
     pool_list = []
     for file in files:
@@ -49,7 +49,7 @@ def extract_pool(chain: str = "polygon") -> list[tuple[str, int]]:
 
 
 def split_blocks(
-    start_block: int, end_block: int, step: int, pools: list, chain: str
+    start_block: int, end_block: int, step: int, pools: list[str], chain: str
 ) -> list[tuple[int, int]]:
     """
     Split the blocks into step ranges
@@ -63,7 +63,7 @@ def split_blocks(
     for i in tqdm(range(min_block, max_block, step), desc="Splitting Blocks"):
 
         # check wether the file exits
-        if os.path.exists(f"{DATA_PATH}/{chain}/swap/{i}_{i + step - 1}.json"):
+        if os.path.exists(DATA_PATH / chain / "swap" / f"{i}_{i + step - 1}.json"):
             continue
 
         pool_list = []
@@ -83,10 +83,10 @@ def fetch_swap_multiprocess(
     chain: str,
     from_block: int,
     to_block: int,
-    pools: list,
+    pools: list[str],
     queue: multiprocessing.Queue,
     path: str,
-    abi: dict,
+    abi: dict[str, str],
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
 
@@ -100,10 +100,10 @@ def fetch_swap_events(
     chain: str,
     from_block: int,
     to_block: int,
-    pools: list,
+    pools: list[str],
     http: str,
     path: str,
-    abi: dict,
+    abi: dict[str, str],
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
 
@@ -197,7 +197,7 @@ def main() -> None:
     """
 
     args = parse_args()
-    os.makedirs(f"{DATA_PATH}/{args.chain}/swap", exist_ok=True)
+    os.makedirs(DATA_PATH / args.chain / "swap", exist_ok=True)
 
     INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 

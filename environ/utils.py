@@ -2,8 +2,6 @@
 Class to filter the event from Ethereum
 """
 
-import glob
-import json
 import logging
 from typing import Any, Iterable
 
@@ -15,29 +13,12 @@ from web3._utils.filters import construct_event_filter_params
 from web3.datastructures import AttributeDict
 from web3.providers import HTTPProvider
 
-from environ.constants import API_BASE, DATA_PATH
+from environ.constants import API_BASE
 
 logger = logging.getLogger(__name__)
 
 
-def extract_pool_set() -> set[str]:
-    """Fetch the set of pools from the file"""
-
-    # get the list of all files in the folder
-    glob_path = f"{DATA_PATH}/polygon/pool/*.json"
-    files = glob.glob(glob_path)
-
-    pool_set = set()
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            for line in f:
-                event = json.loads(line)
-                pool_set.add(event["args"]["pool"])
-
-    return pool_set
-
-
-def to_dict(obj) -> Any:
+def to_dict(obj: Any) -> Any:
     """Convert an AttributeDict to a regular dictionary"""
     if isinstance(obj, AttributeDict):
         return {k: to_dict(v) for k, v in obj.items()}

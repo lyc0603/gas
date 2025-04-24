@@ -19,9 +19,9 @@ from environ.utils import _fetch_events_for_all_contracts, to_dict
 
 load_dotenv()
 
-os.makedirs(f"{DATA_PATH}/log", exist_ok=True)
+os.makedirs(DATA_PATH / "log", exist_ok=True)
 logging.basicConfig(
-    filename=f"{DATA_PATH}/log/error.log",
+    filename=DATA_PATH / "log" / "error.log",
     filemode="a",
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.ERROR,
@@ -41,7 +41,7 @@ def fetch_new_pools(
 
         # Fetch pool creation events
         pool_created_event = w3.eth.contract(
-            abi=json.load(open(f"{ABI_PATH}/v3factory.json", encoding="utf-8"))
+            abi=json.load(open(ABI_PATH / "v3factory.json", encoding="utf-8"))
         ).events.PoolCreated
 
         events = _fetch_events_for_all_contracts(
@@ -55,7 +55,7 @@ def fetch_new_pools(
         events = to_dict(events)
 
         with open(
-            f"{DATA_PATH}/{chain}/pool/{from_block}_{to_block}.json",
+            DATA_PATH / chain / "pool" / f"{from_block}_{to_block}.json",
             "a",
             encoding="utf-8",
         ) as f:
@@ -112,7 +112,7 @@ def split_blocks(
 
     for i in range(min_block, max_block, step):
         # check if the file already exists
-        if not os.path.exists(f"{DATA_PATH}/{chain}/pool/{i}_{i + step - 1}.json"):
+        if not os.path.exists(DATA_PATH / chain / "pool" / f"{i}_{i + step - 1}.json"):
             blocks.append((i, i + step - 1))
         else:
             continue
@@ -127,8 +127,7 @@ def main() -> None:
     """
 
     args = parse_args()
-    if not os.path.exists(f"{DATA_PATH}/{args.chain}/pool"):
-        os.makedirs(f"{DATA_PATH}/{args.chain}/pool")
+    os.makedirs(DATA_PATH / args.chain / "pool", exist_ok=True)
 
     INFURA_API_KEYS = str(os.getenv("INFURA_API_KEYS")).split(",")
 
