@@ -1,5 +1,7 @@
 """This file contains the configuration settings for the market environment."""
 
+import os
+
 from environ.settings import PROJECT_ROOT
 
 DATA_PATH = PROJECT_ROOT / "data"
