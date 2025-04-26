@@ -9,6 +9,7 @@ import logging
 import multiprocessing
 import os
 import time
+from typing import Optional
 
 from tqdm import tqdm
 from web3 import HTTPProvider, Web3
@@ -101,8 +102,13 @@ def fetch_swap_events(
     http: str,
     path: str,
     abi: dict[str, str],
+    is_main: bool = True,
+    temp_data: Optional[list] = None,
 ) -> None:
     """Fetch swap events using a specific API key and block range"""
+
+    if temp_data is None:
+        temp_data = []
 
     try:
         w3 = Web3(HTTPProvider(http))
@@ -115,23 +121,34 @@ def fetch_swap_events(
             to_block,
         )
         events = to_dict(events)
-
-        with open(
-            path,
-            "a",
-            encoding="utf-8",
-        ) as f:
-            for event in events:
-                f.write(json.dumps(event) + "\n")
+        temp_data.extend(events)
 
     except Web3RPCError as e:
         try:
             error_msg = json.loads(e.args[0].replace("'", '"'))
             if error_msg["code"] == -32005:
                 mid_block = (from_block + to_block) // 2
-                fetch_swap_events(chain, from_block, mid_block, pools, http, path, abi)
                 fetch_swap_events(
-                    chain, mid_block + 1, to_block, pools, http, path, abi
+                    chain,
+                    from_block,
+                    mid_block,
+                    pools,
+                    http,
+                    path,
+                    abi,
+                    False,
+                    temp_data,
+                )
+                fetch_swap_events(
+                    chain,
+                    mid_block + 1,
+                    to_block,
+                    pools,
+                    http,
+                    path,
+                    abi,
+                    False,
+                    temp_data,
                 )
         except json.JSONDecodeError as _:
             logging.error(
@@ -157,6 +174,16 @@ def fetch_swap_events(
             to_block,
             e,
         )
+
+    # If we are the main caller, finally write to the file
+    if is_main:
+        with open(
+            path,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            for event in events:
+                f.write(json.dumps(event) + "\n")
 
 
 def parse_args() -> argparse.Namespace:
