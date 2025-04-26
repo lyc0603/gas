@@ -10,15 +10,12 @@ import multiprocessing
 import os
 import time
 
-from dotenv import load_dotenv
 from tqdm import tqdm
 from web3 import HTTPProvider, Web3
 from web3.exceptions import Web3RPCError
 
-from environ.constants import UNISWAP_V3_POOL_ABI, API_BASE, DATA_PATH, INFURA_API_KEYS
+from environ.constants import API_BASE, DATA_PATH, INFURA_API_KEYS, UNISWAP_V3_POOL_ABI
 from environ.utils import _fetch_events_for_all_contracts, to_dict
-
-load_dotenv()
 
 os.makedirs(DATA_PATH / "log", exist_ok=True)
 logging.basicConfig(
