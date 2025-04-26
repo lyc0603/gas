@@ -10,7 +10,6 @@ import os
 import time
 from typing import Any
 
-from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
@@ -22,8 +21,6 @@ from environ.constants import (
     UNISWAP_V3_FACTORY_ABI,
 )
 from environ.utils import _fetch_events_for_all_contracts, to_dict
-
-load_dotenv()
 
 os.makedirs(DATA_PATH / "log", exist_ok=True)
 logging.basicConfig(

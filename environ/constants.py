@@ -1,9 +1,13 @@
 """This file contains the configuration settings for the market environment."""
 
-import os
 import json
+import os
+
+from dotenv import load_dotenv
 
 from environ.settings import PROJECT_ROOT
+
+load_dotenv()
 
 DATA_PATH = PROJECT_ROOT / "data"
 ABI_PATH = DATA_PATH / "abi"
