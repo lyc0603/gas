@@ -2,7 +2,9 @@
 
 import os
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
 from environ.settings import PROJECT_ROOT
 
 DATA_PATH = PROJECT_ROOT / "data"
@@ -19,6 +21,7 @@ API_BASE = {
 
 # Factory Addresses
 FACTORY = {
+    "ethereum": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
     "arbitrum": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
     "polygon": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
 }

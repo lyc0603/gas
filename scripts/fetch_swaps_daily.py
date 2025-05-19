@@ -1,16 +1,21 @@
-# ──────────────────────────────────────────────────────────────────────────────
-# standard library
+"""
+UniswapV3 Swap fetcher that chunks the chain per calendar day with
+boundaries at midnight GMT
+"""
+
+# ─── standard library ────────────────────────────────────────────────────────
 import argparse, glob, json, logging, multiprocessing as mp, os, time
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal, getcontext
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# third-party
+# ─── third-party ─────────────────────────────────────────────────────────────
 from tqdm import tqdm
 from web3 import Web3, HTTPProvider
 from web3.exceptions import Web3RPCError
 
-# project-local
+# ─── project-local ───────────────────────────────────────────────────────────
 from environ.constants import (
     UNISWAP_V3_POOL_ABI,
     API_BASE,
@@ -19,9 +24,7 @@ from environ.constants import (
 )  # type: ignore
 from environ.utils import _fetch_events_for_all_contracts, to_dict  # type: ignore
 
-# ──────────────────────────────────────────────────────────────────────────────
-# logging
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── logging setup (unchanged) ───────────────────────────────────────────────
 (DATA_PATH / "log").mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     filename=DATA_PATH / "log" / "error.log",
@@ -30,21 +33,14 @@ logging.basicConfig(
     level=logging.ERROR,
 )
 
-# ──────────────────────────────────────────────────────────────────────────────
-# constants & global caches
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── precision / global caches (unchanged) ───────────────────────────────────
 getcontext().prec = 60
-
 WETH = Web3.to_checksum_address("0xC02aaA39b223FE8D0A0E5C4F27eAD9083C756Cc2")
 USDC = Web3.to_checksum_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
 USDT = Web3.to_checksum_address("0xdAC17F958D2ee523a2206206994597C13D831ec7")
 DAI = Web3.to_checksum_address("0x6B175474E89094C44Da98b954EedeAC495271d0F")
-STABLES = {USDC, USDT, DAI}
-
-# canonical 0.05 % WETH/USDC pool
+STABLES = {USDT}
 WETH_USDC_POOL = Web3.to_checksum_address("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")
-
-# caches
 _decimals_cache: Dict[str, int] = {}
 _symbol_cache: Dict[str, str] = {}
 _weth_usd_cache: Dict[int, float] = {}
@@ -261,6 +257,7 @@ def fetch_swap_events(
                     t0, t1 = pool_info[pool]["token0"], pool_info[pool]["token1"]
                     sym0, sym1 = erc20_symbol(w3, t0), erc20_symbol(w3, t1)
                     dec0 = erc20_decimals(w3, t0)
+                    dec1 = erc20_decimals(w3, t1)
                     amt0 = abs(int(ev["args"]["amount0"])) / 10**dec0
                     block = ev["blockNumber"]
 
@@ -289,9 +286,11 @@ def fetch_swap_events(
 
                     ev.update(
                         {
-                            "timestamp": ts,  # <── NEW FIELD
+                            "timestamp": ts,
                             "token0_symbol": sym0,
                             "token1_symbol": sym1,
+                            "token0_decimals": dec0,
+                            "token1_decimals": dec1,
                             "amountUSD": usd_vol,
                         }
                     )
@@ -319,9 +318,66 @@ def fetch_swap_events(
         logging.error(f"Error {frm}-{to}: {e}")
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# multiprocessing wrapper
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── GMT timezone helper ─────────────────────────────────────────────────────
+GMT = timezone(timedelta(hours=0), name="GMT")  # fixed, no DST
+
+
+# ─── timestamp → block (binary search) ───────────────────────────────────────
+def timestamp_to_block(
+    w3: Web3, target_ts: int, low: int = 0, high: Optional[int] = None
+) -> int:
+    """Return the first block whose timestamp ≥ `target_ts`."""
+    if high is None:
+        high = w3.eth.block_number
+    while low < high:
+        mid = (low + high) // 2
+        if w3.eth.get_block(mid).timestamp < target_ts:
+            low = mid + 1
+        else:
+            high = mid
+    return low
+
+
+# ─── split chain into day-sized block ranges (00:00 GMT cut-offs) ────────────
+def split_days(start_date: str, end_date: str, w3: Web3) -> List[Tuple[int, int, str]]:
+    """Return [(from_block, to_block, 'YYYYMMDD')] for each GMT day."""
+    dt0 = datetime.fromisoformat(start_date).replace(tzinfo=GMT)
+    dt1 = datetime.fromisoformat(end_date).replace(tzinfo=GMT)
+    ts0, ts1 = int(dt0.timestamp()), int(dt1.timestamp())
+
+    ranges: List[Tuple[int, int, str]] = []
+    day_start = ts0
+    while day_start < ts1:
+        next_day = day_start + 86_400
+        frm_blk = timestamp_to_block(w3, day_start)
+        to_blk = timestamp_to_block(w3, next_day) - 1
+        if to_blk >= frm_blk:
+            date_str = datetime.fromtimestamp(day_start, GMT).strftime(
+                "%Y%m%d"
+            )  # ← no dashes
+            ranges.append((frm_blk, to_blk, date_str))
+        day_start = next_day
+    return ranges
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────────────
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Fetch daily Uniswap-V3 swaps (midnight GMT)"
+    )
+    p.add_argument("--chain", default="ethereum")
+    p.add_argument(
+        "--start_date",
+        required=True,
+        help="inclusive start date YYYY-MM-DD (midnight GMT)",
+    )
+    p.add_argument(
+        "--end_date", required=True, help="exclusive end date YYYY-MM-DD (midnight GMT)"
+    )
+    return p.parse_args()
+
+
+# ─── multiprocessing worker ──────────────────────────────────────
 def worker(
     chain: str,
     frm: int,
@@ -334,61 +390,63 @@ def worker(
     weth_index: Dict[str, List[str]],
 ):
     http = q.get()
-    time.sleep(0.3)
+    time.sleep(0.1)
     try:
         fetch_swap_events(chain, frm, to, pools, http, out, abi, pool_info, weth_index)
     finally:
         q.put(http)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# CLI & main
-# ──────────────────────────────────────────────────────────────────────────────
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Fetch Uniswap-V3 swaps + symbols + USD value"
-    )
-    p.add_argument("--chain", default="ethereum")
-    p.add_argument("--start", type=int, required=True, help="start block")
-    p.add_argument("--end", type=int, required=True, help="end block (inclusive)")
-    p.add_argument("--step", type=int, default=5_000, help="block chunk size")
-    return p.parse_args()
+def _run_task(args_tuple):
+    worker(*args_tuple)
+    return 1
 
 
+# ─── main ────────────────────────────────────────────────────────────────────
 def main() -> None:
     args = parse_args()
     (DATA_PATH / args.chain / "swap").mkdir(parents=True, exist_ok=True)
 
     pool_info = load_pool_info(args.chain)
     weth_index = build_weth_index(pool_info)
-    blocks = split_blocks(
-        args.start, args.end, args.step, extract_pool(args.chain), args.chain
-    )
+    pool_bnums = extract_pool(args.chain)  # [(pool_addr, creation_block)]
 
-    mgr = mp.Manager()
+    w3_lookup = Web3(HTTPProvider(API_BASE[args.chain] + INFURA_API_KEYS[0]))
+    day_ranges = split_days(args.start_date, args.end_date, w3_lookup)
+
+    # shared queue of RPC endpoints
+    mgr: mp.Manager = mp.Manager()
     q: mp.Queue = mgr.Queue()
     for key in INFURA_API_KEYS:
         q.put(API_BASE[args.chain] + key)
 
-    procs = min(len(INFURA_API_KEYS), os.cpu_count() or 1)
-    with mp.Pool(procs) as pool:
-        pool.starmap(
-            worker,
-            [
-                (
-                    args.chain,
-                    frm,
-                    to,
-                    pls,
-                    q,
-                    DATA_PATH / args.chain / "swap" / f"{frm}_{to}.jsonl",
-                    UNISWAP_V3_POOL_ABI,
-                    pool_info,
-                    weth_index,
-                )
-                for frm, to, pls in blocks
-            ],
+    # one tuple per calendar-day chunk
+    tasks = [
+        (
+            args.chain,
+            frm,
+            to,
+            [p for p, bn in pool_bnums if bn <= to],  # pools live that day
+            q,
+            DATA_PATH
+            / args.chain
+            / "swap"
+            / f"infura_uniswap_v3_swaps_{date}.jsonl",  # ← new filename
+            UNISWAP_V3_POOL_ABI,
+            pool_info,
+            weth_index,
         )
+        for frm, to, date in day_ranges
+    ]
+
+    procs = min(len(INFURA_API_KEYS), os.cpu_count() or 1)
+    with (
+        mp.Pool(procs) as pool,
+        tqdm(total=len(tasks), desc="Fetching days", unit="day") as bar,
+    ):
+        # imap_unordered yields as soon as a day finishes → advance bar
+        for _ in pool.imap_unordered(_run_task, tasks, chunksize=1):
+            bar.update()
 
 
 if __name__ == "__main__":

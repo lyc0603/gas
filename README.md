@@ -102,7 +102,7 @@ Arguments:
 - `--step`: the step size of each iteration. (e.g. `500000`)
 
 ```
-python scripts/fetch_new_pools.py --chain polygon --start 22757547 --end 68400000 --step 500000
+python scripts/fetch_new_pools.py --chain ethereum --start 22757547 --end 68400000 --step 500000
 ```
 
 ### Fetch all swap transactions of Uniswap V3, and then save them to data.
@@ -113,5 +113,9 @@ Arguments:
 - `--step`: the step size of each iteration. (e.g. `1000`)
 
 ```
-python scripts/fetch_swaps.py --chain polygon --start 22757547 --end 68400000 --step 1000
+python scripts/fetch_swaps_daily.py --chain ethereum --start_date 20220501 --end_date 20220530 
+```
+### Processing and reformatting data
+```
+python scripts/process_swaps.py
 ```

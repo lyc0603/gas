@@ -9,8 +9,6 @@ import multiprocessing
 import os
 import time
 from typing import Any
-
-from dotenv import load_dotenv
 from web3 import Web3
 from web3.providers import HTTPProvider
 
@@ -23,7 +21,18 @@ from environ.constants import (
 )
 from environ.utils import _fetch_events_for_all_contracts, to_dict
 
-load_dotenv()
+# Add ERC20 ABI for symbol function
+ERC20_ABI = [
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    }
+]
 
 os.makedirs(DATA_PATH / "log", exist_ok=True)
 logging.basicConfig(
@@ -60,6 +69,47 @@ def fetch_new_pools(
 
         events = to_dict(events)
 
+        # Fetch token symbols for each event
+        for event in events:
+            try:
+                # Extract token addresses
+                token0_address = event.get("args", {}).get("token0")
+                token1_address = event.get("args", {}).get("token1")
+
+                # Create token contract instances
+                if token0_address:
+                    token0_contract = w3.eth.contract(
+                        address=token0_address, abi=ERC20_ABI
+                    )
+                    try:
+                        event["token0_symbol"] = (
+                            token0_contract.functions.symbol().call()
+                        )
+                    except Exception as e:
+                        event["token0_symbol"] = "UNKNOWN"
+                        logging.error(
+                            f"Failed to fetch symbol for token0 {token0_address}: {e}"
+                        )
+
+                if token1_address:
+                    token1_contract = w3.eth.contract(
+                        address=token1_address, abi=ERC20_ABI
+                    )
+                    try:
+                        event["token1_symbol"] = (
+                            token1_contract.functions.symbol().call()
+                        )
+                    except Exception as e:
+                        event["token1_symbol"] = "UNKNOWN"
+                        logging.error(
+                            f"Failed to fetch symbol for token1 {token1_address}: {e}"
+                        )
+
+            except Exception as e:
+                logging.error(f"Error processing token symbols for pool: {e}")
+                event["token0_symbol"] = "ERROR"
+                event["token1_symbol"] = "ERROR"
+
         with open(
             DATA_PATH / chain / "pool" / f"{from_block}_{to_block}.json",
             "a",
@@ -71,6 +121,9 @@ def fetch_new_pools(
         print(
             f"Fetching Pools: Block not found for block range {from_block} - {to_block}, {e}"
         )
+        logging.error(
+            f"Error fetching pools for block range {from_block}-{to_block}: {e}"
+        )
 
     queue.put(http)
 
@@ -80,8 +133,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pool Fetcher CLI")
     parser.add_argument(
         "--chain",
-        default="polygon",
-        help="The chain to fetch data from (e.g., polygon).",
+        default="ethereum",
+        help="The chain to fetch data from (e.g., ethereum).",
     )
     parser.add_argument(
         "--start",
